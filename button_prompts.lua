@@ -19,11 +19,15 @@ local function reset_button_prompts()
 	button_prompts_hidden = false
 end
 
+-- If hidden=true, hide all button prompts. If hidden=false, enable all button prompts such that
+-- prompts near the player will be visible.
 local function hide_button_prompts(hidden)
 	button_prompts_hidden = hidden
 end
 
 -- Spawn a button prompt at the coordinates.
+-- prompt_type: Sets the icon that will be used along with the prompt.
+-- x, y, layer: Position of the prompt.
 local function spawn_button_prompt(prompt_type, x, y, layer)
     -- Spawn a TV to "host" the prompt. We will hide the TV and silence its sound.
     local tv_uid = spawn_entity(ENT_TYPE.ITEM_TV, x, y, layer, 0, 0)
