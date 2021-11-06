@@ -69,8 +69,11 @@ local function spawn_button_prompt_on(prompt_type, on_entity_uid)
             tv:destroy()
             return
         end
-        tv.x, tv.y, tv.layer = x, y, layer
-
+        -- Do not try moving the TV into a floor tile, since that will destroy it.
+        local tiles = get_entities_at(0, MASK.FLOOR | MASK.ACTIVEFLOOR, x, y, layer, .5)
+        if #tiles == 0 then
+            tv.x, tv.y, tv.layer = x, y, layer
+        end
     end, ON.GAMEFRAME)
     return tv_uid
 end
