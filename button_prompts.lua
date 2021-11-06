@@ -13,10 +13,15 @@ local station_callback = nil
 local reset_callback = nil
 
 local tvs = {}
+local callbacks = {}
 local button_prompts_hidden = false
 local function reset_button_prompts()
 	tvs = {}
 	button_prompts_hidden = false
+    for _, callback in pairs(callbacks) do
+        clear_callback(callback)
+    end
+    callbacks = {}
 end
 
 -- If hidden=true, hide all button prompts. If hidden=false, enable all button prompts such that
@@ -36,6 +41,37 @@ local function spawn_button_prompt(prompt_type, x, y, layer)
     local prompt = get_entity(entity_get_items_by(tv.fx_button.uid, ENT_TYPE.FX_BUTTON_DIALOG, 0)[1])
     prompt.animation_frame = 137 + 16 * prompt_type
     tvs[#tvs+1] = tv
+    return tv_uid
+end
+
+-- Spawn a button prompt attached to an entity.
+-- prompt_type: Sets the icon that will be used along with the prompt.
+-- on_entity_uid: Entity that the prompt will attach to.
+local function spawn_button_prompt_on(prompt_type, on_entity_uid)
+    local x, y, layer = get_position(on_entity_uid)
+    local on_entity = get_entity(on_entity_uid)
+    -- Spawn a TV to "host" the prompt. We will hide the TV and silence its sound.
+    local tv_uid = spawn_entity(ENT_TYPE.ITEM_TV, x, y, layer, 0, 0)
+    local tv = get_entity(tv_uid)
+    tv.flags = set_flag(tv.flags, ENT_FLAG.INVISIBLE)
+    tv.flags = set_flag(tv.flags, ENT_FLAG.NO_GRAVITY)
+    local prompt = get_entity(entity_get_items_by(tv.fx_button.uid, ENT_TYPE.FX_BUTTON_DIALOG, 0)[1])
+    prompt.animation_frame = 137 + 16 * prompt_type
+    tvs[#tvs+1] = tv
+
+    callbacks[tv_uid] = set_callback(function()
+        local x, y, layer = get_position(on_entity_uid)
+        local on_entity_now = get_entity(on_entity_uid)
+        local tv_now = get_entity(tv_uid)
+        if on_entity_now ~= on_entity or tv_now ~= tv then
+            clear_callback(callbacks[tv_uid])
+            callbacks[tv_uid] = nil
+            tv:destroy()
+            return
+        end
+        tv.x, tv.y, tv.layer = x, y, layer
+
+    end, ON.GAMEFRAME)
     return tv_uid
 end
 
@@ -90,7 +126,8 @@ end, ON.LOAD)
 return {
     PROMPT_TYPE = PROMPT_TYPE,
     spawn_button_prompt = spawn_button_prompt,
+    spawn_button_prompt_on = spawn_button_prompt_on,
     hide_button_prompts = hide_button_prompts,
     activate = activate,
-    deactivate = deactivate,    
+    deactivate = deactivate,
 }
