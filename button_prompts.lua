@@ -14,6 +14,7 @@ local reset_callback = nil
 
 local tvs = {}
 local callbacks = {}
+local shop_callbacks = {}
 local button_prompts_hidden = false
 local function reset_button_prompts()
 	tvs = {}
@@ -21,7 +22,11 @@ local function reset_button_prompts()
     for _, callback in pairs(callbacks) do
         clear_callback(callback)
     end
+    for _, callback in pairs(shop_callbacks) do
+        clear_callback(callback)
+    end
     callbacks = {}
+    shop_callbacks = {}
 end
 
 -- If hidden=true, hide all button prompts. If hidden=false, enable all button prompts such that
@@ -78,6 +83,61 @@ local function spawn_button_prompt_on(prompt_type, on_entity_uid)
     return tv_uid
 end
 
+local function spawn_shop_prompt_on(prompt_type, on_entity_uid, item_name, value_text, show_price_icon)
+    item_name = item_name or ""
+    value_text = value_text or ""
+    local tv_uid = spawn_button_prompt_on(prompt_type, on_entity_uid)
+    local tv = get_entity(tv_uid)
+
+    local width = 6
+    local height = 3
+
+    tv.fx_button.y = 2.3 --1
+    tv.fx_button.x = -1 --1.3 - width / 2
+
+    local function update_item_name(new_item_name)
+        item_name = new_item_name
+    end
+
+    local function update_value_text(new_value_text)
+        value_text = new_value_text
+    end
+
+    shop_callbacks[tv_uid] = set_callback(function(ctx, draw_depth)
+        if draw_depth ~= 1 then return end
+        if button_prompts_hidden then return end
+        local black = Color:black()
+        local white = Color:white()
+        local gray = Color:gray()
+        black.a = tv.fx_button.color.a
+        white.a = tv.fx_button.color.a
+        gray.a = tv.fx_button.color.a
+
+        local x, y = get_position(on_entity_uid) --tv.x, tv.y
+        print(f'tv: {x}, {y}')
+        y = y - 1.3
+        local topy = y + 2
+        local midx = x
+
+        ctx:draw_world_texture(TEXTURE.DATA_TEXTURES_MENU_BASIC_3, 5, 0, x - 1.5, y + 3.5, x + 1.5, y + 2, white)
+
+        print(f'item name: {item_name}')
+        local screenx1, screeny1 = screen_position(x, y + 3.1)
+        local screenx2, screeny2 = screen_position(x, y + 2.62)
+        local text = item_name
+        local text2 = value_text
+        ctx:draw_text(text, screenx1, screeny1, .00064, .00064, black, VANILLA_TEXT_ALIGNMENT.CENTER, VANILLA_FONT_STYLE.ITALIC)
+        ctx:draw_text(text2, screenx2, screeny2, .0005, .0005, white, VANILLA_TEXT_ALIGNMENT.CENTER, VANILLA_FONT_STYLE.ITALIC)
+
+    end, ON.RENDER_PRE_DRAW_DEPTH)
+    return {
+        tv_uid = tv_uid,
+        tv = tv,
+        update_item_name = update_item_name,
+        update_value_text = update_value_text,
+    }
+end
+
 local function activate()
     if active then return end
     active = true
@@ -130,6 +190,7 @@ return {
     PROMPT_TYPE = PROMPT_TYPE,
     spawn_button_prompt = spawn_button_prompt,
     spawn_button_prompt_on = spawn_button_prompt_on,
+    spawn_shop_prompt_on = spawn_shop_prompt_on,
     hide_button_prompts = hide_button_prompts,
     activate = activate,
     deactivate = deactivate,
