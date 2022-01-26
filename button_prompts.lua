@@ -114,14 +114,12 @@ local function spawn_shop_prompt_on(prompt_type, on_entity_uid, item_name, value
         gray.a = tv.fx_button.color.a
 
         local x, y = get_position(on_entity_uid) --tv.x, tv.y
-        print(f'tv: {x}, {y}')
         y = y - 1.3
         local topy = y + 2
         local midx = x
 
         ctx:draw_world_texture(TEXTURE.DATA_TEXTURES_MENU_BASIC_3, 5, 0, x - 1.5, y + 3.5, x + 1.5, y + 2, white)
 
-        print(f'item name: {item_name}')
         local screenx1, screeny1 = screen_position(x, y + 3.1)
         local screenx2, screeny2 = screen_position(x, y + 2.62)
         local text = item_name
