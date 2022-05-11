@@ -8,12 +8,11 @@ local PROMPT_TYPE <const> = {
 }
 
 local active = false
-local sound_callback = nil
-local station_callback = nil
 local reset_callback = nil
 
 local tvs = {}
 local callbacks = {}
+local action_callbacks = {}
 local shop_callbacks = {}
 local button_prompts_hidden = false
 local function reset_button_prompts()
@@ -25,44 +24,80 @@ local function reset_button_prompts()
     for _, callback in pairs(shop_callbacks) do
         clear_callback(callback)
     end
+    for _, callback in pairs(action_callbacks) do
+        clear_callback(callback)
+    end
     callbacks = {}
     shop_callbacks = {}
+    action_callbacks = {}
 end
 
 -- If hidden=true, hide all button prompts. If hidden=false, enable all button prompts such that
 -- prompts near the player will be visible.
 local function hide_button_prompts(hidden)
 	button_prompts_hidden = hidden
+    for _, tv in ipairs(tvs) do
+        if button_prompts_hidden then
+            tv.flags = clr_flag(tv.flags, ENT_FLAG.ENABLE_BUTTON_PROMPT)
+        else
+            tv.flags = set_flag(tv.flags, ENT_FLAG.ENABLE_BUTTON_PROMPT)
+        end
+    end
+end
+
+local function configure_prompt(sign, prompt_type, callback)
+    sign.flags = set_flag(sign.flags, ENT_FLAG.INVISIBLE)
+    if button_prompts_hidden then
+        sign.flags = clr_flag(sign.flags, button_prompts_hidden)
+    end
+    local button_fx
+    for _, item in pairs(sign:get_items()) do
+        local item_ent = get_entity(item)
+        if item_ent.type.id == ENT_TYPE.FX_BUTTON then
+            button_fx = item_ent
+        end
+    end
+
+    local prompt = get_entity(entity_get_items_by(button_fx.uid, ENT_TYPE.FX_BUTTON_DIALOG, 0)[1])
+    prompt.animation_frame = 137 + 16 * prompt_type
+    tvs[#tvs+1] = sign
+
+    action_callbacks[sign.uid] = set_callback(function(text)
+        if text == get_string(hash_to_stringid(0x12645577)) then
+            if button_fx.player_trigger then
+                if callback then
+                    callback()
+                end
+
+                return ""
+            end
+        end
+        return nil
+    end, ON.TOAST)
 end
 
 -- Spawn a button prompt at the coordinates.
 -- prompt_type: Sets the icon that will be used along with the prompt.
 -- x, y, layer: Position of the prompt.
-local function spawn_button_prompt(prompt_type, x, y, layer)
+-- callback: function called then the prompt button is pressed.
+local function spawn_button_prompt(prompt_type, x, y, layer, callback)
     -- Spawn a TV to "host" the prompt. We will hide the TV and silence its sound.
-    local tv_uid = spawn_entity(ENT_TYPE.ITEM_TV, x, y, layer, 0, 0)
+    local tv_uid = spawn_entity(ENT_TYPE.ITEM_CONSTRUCTION_SIGN, x, y, layer, 0, 0)
     local tv = get_entity(tv_uid)
-    tv.flags = set_flag(tv.flags, ENT_FLAG.INVISIBLE)
-    local prompt = get_entity(entity_get_items_by(tv.fx_button.uid, ENT_TYPE.FX_BUTTON_DIALOG, 0)[1])
-    prompt.animation_frame = 137 + 16 * prompt_type
-    tvs[#tvs+1] = tv
+    configure_prompt(tv, prompt_type, callback)
     return tv_uid
 end
 
 -- Spawn a button prompt attached to an entity.
 -- prompt_type: Sets the icon that will be used along with the prompt.
 -- on_entity_uid: Entity that the prompt will attach to.
-local function spawn_button_prompt_on(prompt_type, on_entity_uid)
+local function spawn_button_prompt_on(prompt_type, on_entity_uid, callback)
     local x, y, layer = get_position(on_entity_uid)
     local on_entity = get_entity(on_entity_uid)
     -- Spawn a TV to "host" the prompt. We will hide the TV and silence its sound.
-    local tv_uid = spawn_entity(ENT_TYPE.ITEM_TV, x, y, layer, 0, 0)
+    local tv_uid = spawn_entity(ENT_TYPE.ITEM_CONSTRUCTION_SIGN, x, y, layer, 0, 0)
     local tv = get_entity(tv_uid)
-    tv.flags = set_flag(tv.flags, ENT_FLAG.INVISIBLE)
-    tv.flags = set_flag(tv.flags, ENT_FLAG.NO_GRAVITY)
-    local prompt = get_entity(entity_get_items_by(tv.fx_button.uid, ENT_TYPE.FX_BUTTON_DIALOG, 0)[1])
-    prompt.animation_frame = 137 + 16 * prompt_type
-    tvs[#tvs+1] = tv
+    configure_prompt(tv, prompt_type, callback)
 
     callbacks[tv_uid] = set_callback(function()
         local x, y, layer = get_position(on_entity_uid)
@@ -71,6 +106,10 @@ local function spawn_button_prompt_on(prompt_type, on_entity_uid)
         if on_entity_now ~= on_entity or tv_now ~= tv then
             clear_callback(callbacks[tv_uid])
             callbacks[tv_uid] = nil
+            if action_callbacks[tv_uid] then
+                clear_callback(action_callbacks[tv_uid])
+                action_callbacks[tv_uid] = nil
+            end
             tv:destroy()
             return
         end
@@ -83,17 +122,25 @@ local function spawn_button_prompt_on(prompt_type, on_entity_uid)
     return tv_uid
 end
 
-local function spawn_shop_prompt_on(prompt_type, on_entity_uid, item_name, value_text, show_price_icon)
+local function spawn_shop_prompt_on(prompt_type, on_entity_uid, item_name, value_text, show_price_icon, callback)
     item_name = item_name or ""
     value_text = value_text or ""
-    local tv_uid = spawn_button_prompt_on(prompt_type, on_entity_uid)
-    local tv = get_entity(tv_uid)
+    local sign_uid = spawn_button_prompt_on(prompt_type, on_entity_uid, callback)
+    local sign = get_entity(sign_uid)
 
     local width = 6
     local height = 3
 
-    tv.fx_button.y = 2.3 --1
-    tv.fx_button.x = -1 --1.3 - width / 2
+    local button_fx
+    for _, item in pairs(sign:get_items()) do
+        local item_ent = get_entity(item)
+        if item_ent.type.id == ENT_TYPE.FX_BUTTON then
+            button_fx = item_ent
+        end
+    end
+
+    button_fx.y = 2.3 --1
+    button_fx.x = -1 --1.3 - width / 2
 
     local function update_item_name(new_item_name)
         item_name = new_item_name
@@ -103,15 +150,15 @@ local function spawn_shop_prompt_on(prompt_type, on_entity_uid, item_name, value
         value_text = new_value_text
     end
 
-    shop_callbacks[tv_uid] = set_callback(function(ctx, draw_depth)
+    shop_callbacks[sign_uid] = set_callback(function(ctx, draw_depth)
         if draw_depth ~= 1 then return end
         if button_prompts_hidden then return end
         local black = Color:black()
         local white = Color:white()
         local gray = Color:gray()
-        black.a = tv.fx_button.color.a
-        white.a = tv.fx_button.color.a
-        gray.a = tv.fx_button.color.a
+        black.a = button_fx.color.a
+        white.a = button_fx.color.a
+        gray.a = button_fx.color.a
 
         local x, y = get_position(on_entity_uid) --tv.x, tv.y
         y = y - 1.3
@@ -129,8 +176,8 @@ local function spawn_shop_prompt_on(prompt_type, on_entity_uid, item_name, value
 
     end, ON.RENDER_PRE_DRAW_DEPTH)
     return {
-        tv_uid = tv_uid,
-        tv = tv,
+        tv_uid = sign_uid,
+        tv = sign,
         update_item_name = update_item_name,
         update_value_text = update_value_text,
     }
@@ -139,25 +186,6 @@ end
 local function activate()
     if active then return end
     active = true
-    -- Silence the sound of TVs turning on -- these TVs are used to host the button prompts.
-    sound_callback = set_vanilla_sound_callback(
-        VANILLA_SOUND.ITEMS_TV_LOOP,
-        VANILLA_SOUND_CALLBACK_TYPE.STARTED,
-        function(playing_sound)
-            playing_sound:set_volume(0)
-        end)
-
-    station_callback = set_callback(function()
-        for _, tv in ipairs(tvs) do
-            -- If the station was changed, reset it back to 0 (off).
-            tv.station = 0
-            if button_prompts_hidden then
-                tv.flags = clr_flag(tv.flags, ENT_FLAG.ENABLE_BUTTON_PROMPT)
-            else
-                tv.flags = set_flag(tv.flags, ENT_FLAG.ENABLE_BUTTON_PROMPT)
-            end
-        end
-    end, ON.GAMEFRAME)
 
     reset_callback = set_callback(function()
         reset_button_prompts()
@@ -168,14 +196,9 @@ local function deactivate()
     if not active then return end
     active = false
     reset_button_prompts()
-    if sound_callback then
-        clear_vanilla_sound_callback(sound_callback)
-    end
-    if station_callback then
-        clear_callback(station_callback)
-    end
     if reset_callback then
         clear_callback(reset_callback)
+        reset_callback = nil
     end
 end
 
