@@ -128,9 +128,6 @@ local function spawn_shop_prompt_on(prompt_type, on_entity_uid, item_name, value
     local sign_uid = spawn_button_prompt_on(prompt_type, on_entity_uid, callback)
     local sign = get_entity(sign_uid)
 
-    local width = 6
-    local height = 3
-
     local button_fx
     for _, item in pairs(sign:get_items()) do
         local item_ent = get_entity(item)
@@ -139,8 +136,8 @@ local function spawn_shop_prompt_on(prompt_type, on_entity_uid, item_name, value
         end
     end
 
-    button_fx.y = 2.3 --1
-    button_fx.x = -1 --1.3 - width / 2
+    button_fx.y = 2.3
+    button_fx.x = -1
 
     local function update_item_name(new_item_name)
         item_name = new_item_name
@@ -160,10 +157,8 @@ local function spawn_shop_prompt_on(prompt_type, on_entity_uid, item_name, value
         white.a = button_fx.color.a
         gray.a = button_fx.color.a
 
-        local x, y = get_position(on_entity_uid) --tv.x, tv.y
+        local x, y = get_position(on_entity_uid)
         y = y - 1.3
-        local topy = y + 2
-        local midx = x
 
         ctx:draw_world_texture(TEXTURE.DATA_TEXTURES_MENU_BASIC_3, 5, 0, x - 1.5, y + 3.5, x + 1.5, y + 2, white)
 
