@@ -10,13 +10,13 @@ local PROMPT_TYPE <const> = {
 local active = false
 local reset_callback = nil
 
-local tvs = {}
+local signs = {}
 local callbacks = {}
 local action_callbacks = {}
 local shop_callbacks = {}
 local button_prompts_hidden = false
 local function reset_button_prompts()
-	tvs = {}
+	signs = {}
 	button_prompts_hidden = false
     for _, callback in pairs(callbacks) do
         clear_callback(callback)
@@ -36,11 +36,11 @@ end
 -- prompts near the player will be visible.
 local function hide_button_prompts(hidden)
 	button_prompts_hidden = hidden
-    for _, tv in ipairs(tvs) do
+    for _, sign in ipairs(signs) do
         if button_prompts_hidden then
-            tv.flags = clr_flag(tv.flags, ENT_FLAG.ENABLE_BUTTON_PROMPT)
+            sign.flags = clr_flag(sign.flags, ENT_FLAG.ENABLE_BUTTON_PROMPT)
         else
-            tv.flags = set_flag(tv.flags, ENT_FLAG.ENABLE_BUTTON_PROMPT)
+            sign.flags = set_flag(sign.flags, ENT_FLAG.ENABLE_BUTTON_PROMPT)
         end
     end
 end
@@ -60,7 +60,7 @@ local function configure_prompt(sign, prompt_type, callback)
 
     local prompt = get_entity(entity_get_items_by(button_fx.uid, ENT_TYPE.FX_BUTTON_DIALOG, 0)[1])
     prompt.animation_frame = 137 + 16 * prompt_type
-    tvs[#tvs+1] = sign
+    signs[#signs+1] = sign
 
     action_callbacks[sign.uid] = set_callback(function(text)
         if text == get_string(hash_to_stringid(0x12645577)) then
@@ -81,11 +81,11 @@ end
 -- x, y, layer: Position of the prompt.
 -- callback: function called when the prompt button is pressed.
 local function spawn_button_prompt(prompt_type, x, y, layer, callback)
-    -- Spawn a TV to "host" the prompt. We will hide the TV and silence its sound.
-    local tv_uid = spawn_entity(ENT_TYPE.ITEM_CONSTRUCTION_SIGN, x, y, layer, 0, 0)
-    local tv = get_entity(tv_uid)
-    configure_prompt(tv, prompt_type, callback)
-    return tv_uid
+    -- Spawn a sign to "host" the prompt. We will hide the sign and silence its sound.
+    local sign_uid = spawn_entity(ENT_TYPE.ITEM_CONSTRUCTION_SIGN, x, y, layer, 0, 0)
+    local sign = get_entity(sign_uid)
+    configure_prompt(sign, prompt_type, callback)
+    return sign_uid
 end
 
 -- Spawn a button prompt attached to an entity.
@@ -95,32 +95,32 @@ end
 local function spawn_button_prompt_on(prompt_type, on_entity_uid, callback)
     local x, y, layer = get_position(on_entity_uid)
     local on_entity = get_entity(on_entity_uid)
-    -- Spawn a TV to "host" the prompt. We will hide the TV and silence its sound.
-    local tv_uid = spawn_entity(ENT_TYPE.ITEM_CONSTRUCTION_SIGN, x, y, layer, 0, 0)
-    local tv = get_entity(tv_uid)
-    configure_prompt(tv, prompt_type, callback)
+    -- Spawn a sign to "host" the prompt. We will hide the sign and silence its sound.
+    local sign_uid = spawn_entity(ENT_TYPE.ITEM_CONSTRUCTION_SIGN, x, y, layer, 0, 0)
+    local sign = get_entity(sign_uid)
+    configure_prompt(sign, prompt_type, callback)
 
-    callbacks[tv_uid] = set_callback(function()
+    callbacks[sign_uid] = set_callback(function()
         local x, y, layer = get_position(on_entity_uid)
         local on_entity_now = get_entity(on_entity_uid)
-        local tv_now = get_entity(tv_uid)
-        if on_entity_now ~= on_entity or tv_now ~= tv then
-            clear_callback(callbacks[tv_uid])
-            callbacks[tv_uid] = nil
-            if action_callbacks[tv_uid] then
-                clear_callback(action_callbacks[tv_uid])
-                action_callbacks[tv_uid] = nil
+        local sign_now = get_entity(sign_uid)
+        if on_entity_now ~= on_entity or sign_now ~= sign then
+            clear_callback(callbacks[sign_uid])
+            callbacks[sign_uid] = nil
+            if action_callbacks[sign_uid] then
+                clear_callback(action_callbacks[sign_uid])
+                action_callbacks[sign_uid] = nil
             end
-            tv:destroy()
+            sign:destroy()
             return
         end
-        -- Do not try moving the TV into a floor tile, since that will destroy it.
+        -- Do not try moving the sign into a floor tile, since that will destroy it.
         local tiles = get_entities_at(0, MASK.FLOOR | MASK.ACTIVEFLOOR, x, y, layer, .5)
         if #tiles == 0 then
-            tv.x, tv.y, tv.layer = x, y, layer
+            sign.x, sign.y, sign.layer = x, y, layer
         end
     end, ON.GAMEFRAME)
-    return tv_uid
+    return sign_uid
 end
 
 local function spawn_shop_prompt_on(prompt_type, on_entity_uid, item_name, value_text, show_price_icon, callback)
@@ -172,8 +172,8 @@ local function spawn_shop_prompt_on(prompt_type, on_entity_uid, item_name, value
 
     end, ON.RENDER_PRE_DRAW_DEPTH)
     return {
-        tv_uid = sign_uid,
-        tv = sign,
+        sign_uid = sign_uid,
+        sign = sign,
         update_item_name = update_item_name,
         update_value_text = update_value_text,
     }
