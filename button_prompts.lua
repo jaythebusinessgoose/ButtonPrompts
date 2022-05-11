@@ -79,7 +79,7 @@ end
 -- Spawn a button prompt at the coordinates.
 -- prompt_type: Sets the icon that will be used along with the prompt.
 -- x, y, layer: Position of the prompt.
--- callback: function called then the prompt button is pressed.
+-- callback: function called when the prompt button is pressed.
 local function spawn_button_prompt(prompt_type, x, y, layer, callback)
     -- Spawn a TV to "host" the prompt. We will hide the TV and silence its sound.
     local tv_uid = spawn_entity(ENT_TYPE.ITEM_CONSTRUCTION_SIGN, x, y, layer, 0, 0)
@@ -91,6 +91,7 @@ end
 -- Spawn a button prompt attached to an entity.
 -- prompt_type: Sets the icon that will be used along with the prompt.
 -- on_entity_uid: Entity that the prompt will attach to.
+-- callback: function called when the prompt button is pressed.
 local function spawn_button_prompt_on(prompt_type, on_entity_uid, callback)
     local x, y, layer = get_position(on_entity_uid)
     local on_entity = get_entity(on_entity_uid)
