@@ -45,10 +45,10 @@ local function hide_button_prompts(hidden)
     end
 end
 
-local function configure_prompt(sign, prompt_type, callback)
+local function configure_prompt(sign, prompt_type, callback, condition)
     sign.flags = set_flag(sign.flags, ENT_FLAG.INVISIBLE)
     if button_prompts_hidden then
-        sign.flags = clr_flag(sign.flags, button_prompts_hidden)
+        sign.flags = clr_flag(sign.flags, ENT_FLAG.ENABLE_BUTTON_PROMPT)
     end
     local button_fx
     for _, item in pairs(sign:get_items()) do
@@ -56,6 +56,16 @@ local function configure_prompt(sign, prompt_type, callback)
         if item_ent.type.id == ENT_TYPE.FX_BUTTON then
             button_fx = item_ent
         end
+    end
+
+    if condition then
+        set_post_statemachine(sign.uid, function()
+            if condition() and not button_prompts_hidden then
+                sign.flags = set_flag(sign.flags, ENT_FLAG.ENABLE_BUTTON_PROMPT)
+            else
+                sign.flags = clr_flag(sign.flags, ENT_FLAG.ENABLE_BUTTON_PROMPT)
+            end
+        end)
     end
 
     local prompt = get_entity(entity_get_items_by(button_fx.uid, ENT_TYPE.FX_BUTTON_DIALOG, 0)[1])
@@ -80,11 +90,11 @@ end
 -- prompt_type: Sets the icon that will be used along with the prompt.
 -- x, y, layer: Position of the prompt.
 -- callback: function called when the prompt button is pressed.
-local function spawn_button_prompt(prompt_type, x, y, layer, callback)
+local function spawn_button_prompt(prompt_type, x, y, layer, callback, condition)
     -- Spawn a sign to "host" the prompt. We will hide the sign and silence its sound.
     local sign_uid = spawn_entity(ENT_TYPE.ITEM_CONSTRUCTION_SIGN, x, y, layer, 0, 0)
     local sign = get_entity(sign_uid)
-    configure_prompt(sign, prompt_type, callback)
+    configure_prompt(sign, prompt_type, callback, condition)
     return sign_uid
 end
 
@@ -92,13 +102,13 @@ end
 -- prompt_type: Sets the icon that will be used along with the prompt.
 -- on_entity_uid: Entity that the prompt will attach to.
 -- callback: function called when the prompt button is pressed.
-local function spawn_button_prompt_on(prompt_type, on_entity_uid, callback)
+local function spawn_button_prompt_on(prompt_type, on_entity_uid, callback, condition)
     local x, y, layer = get_position(on_entity_uid)
     local on_entity = get_entity(on_entity_uid)
     -- Spawn a sign to "host" the prompt. We will hide the sign and silence its sound.
     local sign_uid = spawn_entity(ENT_TYPE.ITEM_CONSTRUCTION_SIGN, x, y, layer, 0, 0)
     local sign = get_entity(sign_uid)
-    configure_prompt(sign, prompt_type, callback)
+    configure_prompt(sign, prompt_type, callback, condition)
 
     callbacks[sign_uid] = set_callback(function()
         local x, y, layer = get_position(on_entity_uid)
