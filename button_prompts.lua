@@ -73,7 +73,7 @@ local function configure_prompt(sign, prompt_type, callback, condition)
     signs[#signs+1] = sign
 
     action_callbacks[sign.uid] = set_callback(function(text)
-        if text == get_string(hash_to_stringid(0x12645577)) then
+        if text == get_string(hash_to_stringid(0x12645577)) or text == get_string(hash_to_stringid(0xbab72d60)) then
             if button_fx.player_trigger then
                 if callback then
                     callback()
